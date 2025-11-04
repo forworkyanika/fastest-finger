@@ -1,4 +1,4 @@
-/* style.css (อัปเดต: เพิ่ม Dark/Light Mode และ Animated BG) */
+/* style.css (ฉบับแก้ไข: ลบพื้นหลังตาราง + ใช้ Animated BG) */
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;700;900&display=swap');
 
 /* === [NEW] CSS Variables (Theme Colors) === */
@@ -45,7 +45,7 @@ body.light-mode {
     --btn-secondary-bg: #E0E0E0;
     --btn-secondary-border: #BBB;
 
-    /* Buzzer Colors (Light) - ทำให้สีสดขึ้น */
+    /* Buzzer Colors (Light) */
     --buzzer-wait-1: #FF5A4C;
     --buzzer-wait-2: #E04B3D;
     --buzzer-buzz-1: #34E085;
@@ -68,12 +68,13 @@ body {
     min-height: 100vh;
     box-sizing: border-box;
     overflow-x: hidden;
-    transition: background-color 0.5s ease; /* **[NEW]** */
+    transition: background-color 0.5s ease;
     
-    /* === [EDIT] Animated Background === */
+    /* === [FIX] Animated Background (ลบ background-image ตารางทิ้ง) === */
     background: linear-gradient(-45deg, var(--bg-color-1), var(--bg-color-2), var(--bg-color-1), var(--bg-color-3));
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
+    /* [!!!] ลบ background-image ที่เป็นตารางออกไปจากตรงนี้แล้ว [!!!] */
 }
 
 @keyframes gradientBG {
@@ -82,7 +83,7 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* --- [NEW] Theme Toggle Switch --- */
+/* --- Theme Toggle Switch --- */
 .theme-switch-wrapper {
     position: fixed;
     top: 15px;
@@ -443,7 +444,26 @@ input[type="text"]:focus {
         height: 100vh;
     }
     .host-page-body.landscape-only .header,
-    .host-page-body.landscape-only .host-container {
+    .host-page-body.landscape-only .host-container,
+    .host-page-body.landscape-only .theme-switch-wrapper {
+        display: none; 
+    }
+    
+    /* [FIX] แก้ไข Landscape ของ Home Page (จากรอบที่แล้ว) */
+    .home-page-body.landscape-only::before {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-top: 0;
+    }
+    .home-page-body.landscape-only {
+        overflow: hidden;
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+    }
+    .home-page-body.landscape-only .container,
+    .home-page-body.landscape-only .theme-switch-wrapper {
         display: none;
     }
 }

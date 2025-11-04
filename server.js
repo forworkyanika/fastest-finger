@@ -1,4 +1,4 @@
-// server.js (ฉบับสมบูรณ์ที่แก้ไข Race Condition และ Rejoin แล้ว)
+// server.js (ฉบับแก้ไข: ไม่ลบ Player ตอน Disconnect)
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -143,6 +143,7 @@ io.on('connection', (socket) => {
             });
             io.to(room.hostId).emit('update-player-list', room.players);
         } else {
+            // นี่คือจุดที่เกิด Error
             socket.emit('error-message', 'ไม่พบชื่อผู้เล่นนี้ในห้อง', true);
         }
     });
@@ -188,7 +189,6 @@ io.on('connection', (socket) => {
         } else {
             player.buzzed = true;
             
-            // === [EDIT] แก้ไขเวลาเป็น GMT+7 (Bangkok) ===
             const options = {
                 timeZone: 'Asia/Bangkok',
                 hour12: false,
@@ -198,11 +198,10 @@ io.on('connection', (socket) => {
             };
             const bangkokTime = buzzTime.toLocaleTimeString('th-TH', options);
             const milliseconds = buzzTime.getMilliseconds().toString().padStart(3, '0');
-            // ==========================================
 
             rooms[roomCode].submissions.push({
                 name: player.name,
-                time: `${bangkokTime}.${milliseconds}` // **[EDIT]**
+                time: `${bangkokTime}.${milliseconds}`
             });
             
             socket.emit('player-done'); 
@@ -232,20 +231,13 @@ io.on('connection', (socket) => {
                 break;
             }
 
-            // ตรรกะของ Player เมื่อ Disconnect
-            // (แก้ไขจากไฟล์ที่คุณอัปโหลด)
-            const playerIndex = room.players.findIndex(p => p.id === socket.id);
-            if (playerIndex > -1) {
-                const playerName = room.players[playerIndex].name;
-                console.log(`Player ${playerName} disconnected from room ${roomCode}. Removing player.`);
-                
-                // ลบผู้เล่นออกจากห้องเมื่อหลุด (เพื่อให้เขากลับมา Join ใหม่ได้)
-                rooms[roomCode].players.splice(playerIndex, 1);
-                
-                // อัปเดตรายชื่อให้ Host (ถ้า Host ยังอยู่)
-                if (rooms[roomCode]) {
-                    io.to(rooms[roomCode].hostId).emit('update-player-list', room.players);
-                }
+            // === [FIX] ตรรกะของ Player เมื่อ Disconnect ===
+            // เราจะ "ไม่ลบ" ผู้เล่นทิ้ง แต่จะ "รอ" เขากลับมา Rejoin
+            const player = room.players.find(p => p.id === socket.id);
+            if (player) {
+                // ไม่ต้องทำอะไรเลย (แค่ log ไว้)
+                // เมื่อเขากลับมา 'player-rejoin-check' จะทำงานเอง
+                console.log(`Player ${player.name} disconnected from room ${roomCode}. Awaiting rejoin.`);
                 break;
             }
         }

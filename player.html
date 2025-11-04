@@ -28,7 +28,7 @@
         </button>
     </div>
 
-    <script>
+<script>
         const socket = io();
 
         // --- DOM Elements ---
@@ -40,6 +40,9 @@
         let currentRoomCode = null;
         let currentPlayerName = null;
         let currentRoomName = sessionStorage.getItem('roomName');
+        
+        // --- [NEW] ตัวแปรสำหรับจำสถานะฟาวล์ในรอบนี้ ---
+        let isFouledThisRound = false;
 
         // --- ดึง Room Code จาก URL และ Player Name จาก Session Storage ---
         const urlParams = new URLSearchParams(window.location.search);
@@ -57,6 +60,7 @@
 
         // === Player Rejoin/Reload Logic ===
         socket.on('connect', () => {
+            console.log('Player connected, checking rejoin status.');
             socket.emit('player-rejoin-check', { roomCode: currentRoomCode, playerName: currentPlayerName });
         });
 
@@ -64,6 +68,9 @@
             if(data.roomName) sessionStorage.setItem('roomName', data.roomName);
             playerRoomName.textContent = `ห้อง: ${data.roomName}`;
             
+            // **[NEW]** ตรวจสอบสถานะฟาวล์ตอน Rejoin
+            isFouledThisRound = data.playerState.fouled; 
+
             if (data.playerState.fouled) {
                 setBuzzerState('foul');
             } else if (data.playerState.buzzed) {
@@ -84,14 +91,22 @@
 
         // ========== Socket Event Listeners ==========
         socket.on('game-started', () => {
-            setBuzzerState('buzz'); 
+            // **[NEW]** ถ้าไม่ฟาวล์ ให้ปุ่มเขียว / ถ้าฟาวล์ ให้ปุ่มค้างสีเทา
+            if (!isFouledThisRound) {
+                setBuzzerState('buzz'); 
+            }
         });
+
         socket.on('game-reset', () => {
+            isFouledThisRound = false; // **[NEW]** ล้างสถานะฟาวล์
             setBuzzerState('wait'); 
         });
+
         socket.on('player-foul', () => {
+            isFouledThisRound = true; // **[NEW]** บันทึกว่าฟาวล์รอบนี้
             setBuzzerState('foul'); 
         });
+
         socket.on('player-done', () => {
             setBuzzerState('done'); 
         });
@@ -126,26 +141,6 @@
                     break;
             }
         }
-
-        // === [NEW] Theme Switcher Logic ===
-        const toggle = document.getElementById('theme-toggle');
-        const body = document.body;
-        if (localStorage.getItem('theme') === 'light') {
-            body.classList.add('light-mode');
-            toggle.checked = false;
-        } else {
-            body.classList.remove('light-mode');
-            toggle.checked = true;
-        }
-        toggle.addEventListener('change', () => {
-            if (body.classList.contains('light-mode')) {
-                body.classList.remove('light-mode');
-                localStorage.setItem('theme', 'dark');
-            } else {
-                body.classList.add('light-mode');
-                localStorage.setItem('theme', 'light');
-            }
-        });
     </script>
 </body>
 </html>

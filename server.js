@@ -154,7 +154,13 @@ io.on('connection', (socket) => {
 
         console.log(`Game started in room ${roomCode}`);
         rooms[roomCode].isGameActive = true;
-        rooms[roomCode].players.forEach(p => { p.fouled = false; p.buzzed = false; });
+        
+        // --- [!!!] นี่คือจุดแก้ไข [!!!] ---
+        // เราจะรีเซ็ตเฉพาะ .buzzed (คนที่กดแล้ว)
+        // แต่ "จะไม่รีเซ็ต .fouled" ในตอนนี้
+        rooms[roomCode].players.forEach(p => { p.buzzed = false; }); 
+        // ---------------------------------
+
         rooms[roomCode].submissions = [];
 
         io.to(roomCode).emit('game-started'); 

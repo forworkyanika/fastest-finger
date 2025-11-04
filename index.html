@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
-<body class="home-page-body"> 
+<body class="home-page-body landscape-only"> 
     
     <div class="theme-switch-wrapper">
         <span class="theme-switch-label">☀️</span>
@@ -81,20 +81,18 @@
             sessionStorage.clear();
         });
 
-        // === [NEW] Theme Switcher Logic ===
+        // === Theme Switcher Logic ===
         const toggle = document.getElementById('theme-toggle');
         const body = document.body;
 
-        // 1. ตรวจสอบค่าที่บันทึกไว้
         if (localStorage.getItem('theme') === 'light') {
             body.classList.add('light-mode');
-            toggle.checked = false; // ถ้า light mode ให้ติ๊กออก (เริ่มต้น ☀️)
+            toggle.checked = false;
         } else {
             body.classList.remove('light-mode');
-            toggle.checked = true; // ถ้า dark mode ให้ติ๊กไว้ (🌙)
+            toggle.checked = true;
         }
 
-        // 2. เพิ่ม Event Listener
         toggle.addEventListener('change', () => {
             if (body.classList.contains('light-mode')) {
                 body.classList.remove('light-mode');

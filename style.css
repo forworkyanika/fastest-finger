@@ -68,7 +68,7 @@ body {
     min-height: 100vh;
     box-sizing: border-box;
     overflow-x: hidden;
-    transition: background-color 0.5s ease; /* **[NEW]** */
+    transition: background-color 0.5s ease;
     
     /* === [EDIT] Animated Background === */
     background: linear-gradient(-45deg, var(--bg-color-1), var(--bg-color-2), var(--bg-color-1), var(--bg-color-3));
@@ -428,23 +428,35 @@ input[type="text"]:focus {
     text-shadow: 0 0 10px rgba(255, 127, 17, 0.5);
 }
 
+/* === [EDIT] แก้ไขส่วน Media Query === */
 @media (orientation: portrait) {
-    .host-page-body.landscape-only::before {
+    /*
+     * เมื่อจอเป็นแนวตั้ง:
+     * 1. ให้แสดงข้อความเตือน (::before) ของหน้าที่บังคับแนวนอน
+     * 2. ซ่อนเนื้อหาหลัก (.container, .header, .host-container) ของหน้าที่บังคับแนวนอน
+     */
+    .landscape-only::before {
         display: flex;
         justify-content: center;
         align-items: center;
         padding-top: 0;
     }
     
-    .host-page-body.landscape-only { 
+    .landscape-only { 
         overflow: hidden;
         position: fixed;
         width: 100vw;
         height: 100vh;
     }
+    
+    /* ซ่อนเนื้อหาของหน้า Home และ Host เมื่อเป็นแนวตั้ง */
+    /* **[FIX]** ทำให้ปุ่มสลับโหมดซ่อนไปด้วย */
+    .home-page-body.landscape-only .container,
+    .home-page-body.landscape-only .theme-switch-wrapper,
     .host-page-body.landscape-only .header,
-    .host-page-body.landscape-only .host-container {
-        display: none;
+    .host-page-body.landscape-only .host-container,
+    .host-page-body.landscape-only .theme-switch-wrapper {
+        display: none; /* ใช้ display: none เพื่อซ่อนไปเลย */
     }
 }
 

@@ -3,10 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fast Finger - Player</title> <link rel="stylesheet" href="/style.css">
+    <title>Fast Finger - Player</title> 
+    <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="player-page-body"> 
+    
+    <div class="theme-switch-wrapper">
+        <span class="theme-switch-label">☀️</span>
+        <label class="theme-switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="theme-switch-label">🌙</span>
+    </div>
+
     <div class="header">
         <h1 id="player-room-name"></h1>
         <h2 id="player-name-display"></h2>
@@ -28,12 +39,12 @@
 
         let currentRoomCode = null;
         let currentPlayerName = null;
+        let currentRoomName = sessionStorage.getItem('roomName');
 
         // --- ดึง Room Code จาก URL และ Player Name จาก Session Storage ---
         const urlParams = new URLSearchParams(window.location.search);
         currentRoomCode = urlParams.get('roomCode');
         currentPlayerName = sessionStorage.getItem('playerName');
-        let currentRoomName = sessionStorage.getItem('roomName');
 
         if (!currentRoomCode || !currentPlayerName) {
             alert('ข้อมูลไม่ครบถ้วน กรุณาเข้าร่วมห้องใหม่');
@@ -46,24 +57,19 @@
 
         // === Player Rejoin/Reload Logic ===
         socket.on('connect', () => {
-            console.log('Player connected, checking rejoin status.');
             socket.emit('player-rejoin-check', { roomCode: currentRoomCode, playerName: currentPlayerName });
         });
 
         socket.on('rejoin-state', (data) => {
-            // อัปเดตชื่อห้อง (เผื่อชื่อเปลี่ยน)
             if(data.roomName) sessionStorage.setItem('roomName', data.roomName);
             playerRoomName.textContent = `ห้อง: ${data.roomName}`;
             
-            // ตั้งค่าสถานะปุ่มตามสถานะเกมและผู้เล่น
             if (data.playerState.fouled) {
                 setBuzzerState('foul');
             } else if (data.playerState.buzzed) {
-                // **[FIX]** เปลี่ยนเป็น 'done'
                 setBuzzerState('done'); 
             } else if (data.isGameActive) {
                 setBuzzerState('buzz');
-
             } else {
                 setBuzzerState('wait');
             }
@@ -80,16 +86,12 @@
         socket.on('game-started', () => {
             setBuzzerState('buzz'); 
         });
-
         socket.on('game-reset', () => {
             setBuzzerState('wait'); 
         });
-
         socket.on('player-foul', () => {
             setBuzzerState('foul'); 
         });
-
-        // **[FIX]** รับ 'player-done' จาก server และเรียก 'done'
         socket.on('player-done', () => {
             setBuzzerState('done'); 
         });
@@ -108,23 +110,42 @@
             buzzerBtn.className = 'buzzer ' + state; 
             
             switch (state) {
-                case 'wait': // 🔴 แดง
+                case 'wait': 
                     buzzerText.textContent = 'WAIT';
                     break;
-                case 'buzz': // 🟢 เขียว
+                case 'buzz': 
                     buzzerText.textContent = 'BUZZ!';
                     break;
-                case 'foul': // ⚫ เทา
+                case 'foul': 
                     buzzerText.textContent = 'FOUL';
                     buzzerBtn.disabled = true;
                     break;
-                // **[FIX]** เปลี่ยน 'sent' เป็น 'done'
-                case 'done': // 🔵 น้ำเงิน
+                case 'done': 
                     buzzerText.textContent = 'DONE'; 
                     buzzerBtn.disabled = true;
                     break;
             }
         }
+
+        // === [NEW] Theme Switcher Logic ===
+        const toggle = document.getElementById('theme-toggle');
+        const body = document.body;
+        if (localStorage.getItem('theme') === 'light') {
+            body.classList.add('light-mode');
+            toggle.checked = false;
+        } else {
+            body.classList.remove('light-mode');
+            toggle.checked = true;
+        }
+        toggle.addEventListener('change', () => {
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light');
+            }
+        });
     </script>
 </body>
 </html>

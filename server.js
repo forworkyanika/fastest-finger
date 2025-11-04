@@ -36,9 +36,8 @@ io.on('connection', (socket) => {
     // === 1. Host สร้างห้อง ===
     socket.on('host-create-room', (data) => {
         const roomName = data.roomName.trim();
-        
         if (!isValidName(roomName)) {
-            socket.emit('error-message', 'ชื่อห้องไม่ถูกต้อง (ก-ฮ, a-z, ห้ามตัวเลข/อักษรพิเศษ, ไม่เกิน 20 ตัวอักษร)');
+            socket.emit('error-message', 'ชื่อห้องไม่ถูกต้อง (ต้องเป็น ก-ฮ หรือ a-z, ห้ามใช้ตัวเลข/อักษรพิเศษ, ไม่เกิน 20 ตัวอักษร)');
             return;
         }
 
@@ -57,72 +56,70 @@ io.on('connection', (socket) => {
         socket.emit('room-created', { roomCode, roomName });
     });
 
-    // === 2. Host เข้าร่วม/Refresh (host.html) ===
+    // === 2. Host เข้าร่วม (เมื่อเปิดหน้า host.html หรือ Refresh) ===
     socket.on('host-join', (roomCode) => {
-        const room = rooms[roomCode];
-        if (!room) {
+        if (rooms[roomCode]) {
+            
+            if (rooms[roomCode].disconnectTimer) {
+                clearTimeout(rooms[roomCode].disconnectTimer); 
+                rooms[roomCode].disconnectTimer = null;
+                console.log(`Host reconnected in time. Room ${roomCode} saved.`);
+            }
+
+            rooms[roomCode].hostId = socket.id;
+            socket.join(roomCode);
+            console.log(`Host ${socket.id} connected/rejoined room ${roomCode}`);
+            
+            socket.emit('host-data', {
+                roomName: rooms[roomCode].roomName,
+                roomCode: roomCode,
+                players: rooms[roomCode].players,
+                submissions: rooms[roomCode].submissions,
+                isGameActive: rooms[roomCode].isGameActive
+            });
+        } else {
             socket.emit('error-message', 'ไม่พบห้องนี้', true); 
-            return;
         }
-
-        if (room.disconnectTimer) {
-            clearTimeout(room.disconnectTimer); // ยกเลิกการปิดห้อง
-            room.disconnectTimer = null;
-            console.log(`Host reconnected in time. Room ${roomCode} saved.`);
-        }
-
-        room.hostId = socket.id;
-        socket.join(roomCode);
-        console.log(`Host ${socket.id} connected/rejoined room ${roomCode}`);
-        
-        socket.emit('host-data', {
-            roomName: room.roomName,
-            roomCode: roomCode,
-            players: room.players,
-            submissions: room.submissions,
-            isGameActive: room.isGameActive
-        });
     });
 
     // === 3. Player เข้าร่วมห้อง ===
     socket.on('player-join-room', (data) => {
         const { roomCode, playerName } = data;
         const trimmedName = playerName.trim();
-        const room = rooms[roomCode];
 
-        if (!room) {
+        if (!rooms[roomCode]) {
             socket.emit('error-message', 'ไม่พบรหัสห้องนี้');
             return;
         }
 
-        if (room.disconnectTimer) {
+        if (rooms[roomCode].disconnectTimer) {
             socket.emit('error-message', 'Host กำลังเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
             return;
         }
 
         if (!isValidName(trimmedName)) {
-            socket.emit('error-message', 'ชื่อผู้เล่นไม่ถูกต้อง (ก-ฮ, a-z, ห้ามตัวเลข/อักษรพิเศษ, ไม่เกิน 20 ตัวอักษร)');
+            socket.emit('error-message', 'ชื่อผู้เล่นไม่ถูกต้อง (ต้องเป็น ก-ฮ หรือ a-z, ห้ามใช้ตัวเลข/อักษรพิเศษ, ไม่เกิน 20 ตัวอักษร)');
             return;
         }
 
-        const existingPlayer = room.players.find(p => p.name === trimmedName);
+        const existingPlayer = rooms[roomCode].players.find(p => p.name === trimmedName);
         if (existingPlayer) {
             socket.emit('error-message', 'มีคนใช้ชื่อนี้ในห้องแล้ว');
             return;
         }
         
         const newPlayer = { id: socket.id, name: trimmedName, fouled: false, buzzed: false };
-        room.players.unshift(newPlayer); // ผู้เล่นใหม่ขึ้นบนสุด
+        rooms[roomCode].players.unshift(newPlayer); 
         
         socket.join(roomCode);
         console.log(`Player ${trimmedName} joined room ${roomCode} with ID: ${socket.id}`);
 
-        socket.emit('join-success', { playerName: trimmedName, roomName: room.roomName, roomCode: roomCode });
+        socket.emit('join-success', { playerName: trimmedName, roomName: rooms[roomCode].roomName, roomCode: roomCode });
         
-        io.to(room.hostId).emit('update-player-list', room.players);
+        io.to(rooms[roomCode].hostId).emit('update-player-list', rooms[roomCode].players);
     });
 
-    // === 4. เมื่อ Player เข้าหน้า Player Page (กรณี Refresh/Rejoin) ===
+    // === 4. เมื่อ Player เข้าหน้า Player Page (กรณี Refresh) ===
     socket.on('player-rejoin-check', (data) => {
         const { roomCode, playerName } = data;
         const room = rooms[roomCode];
@@ -134,7 +131,7 @@ io.on('connection', (socket) => {
 
         const player = room.players.find(p => p.name === playerName);
         if (player) {
-            player.id = socket.id; // อัปเดต Socket ID ใหม่
+            player.id = socket.id; 
             socket.join(roomCode);
             console.log(`Player ${playerName} reconnected to room ${roomCode} with new ID: ${socket.id}`);
             
@@ -146,62 +143,72 @@ io.on('connection', (socket) => {
             });
             io.to(room.hostId).emit('update-player-list', room.players);
         } else {
-            socket.emit('error-message', 'ไม่พบชื่อผู้เล่นนี้ในห้อง หรือห้องถูกปิดแล้ว', true);
+            socket.emit('error-message', 'ไม่พบชื่อผู้เล่นนี้ในห้อง', true);
         }
     });
 
     // === 5. Host เริ่มเกม ===
     socket.on('host-start-game', (roomCode) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
+        if (!rooms[roomCode] || rooms[roomCode].hostId !== socket.id) return;
 
         console.log(`Game started in room ${roomCode}`);
-        room.isGameActive = true;
-        room.players.forEach(p => { p.fouled = false; p.buzzed = false; });
-        room.submissions = [];
+        rooms[roomCode].isGameActive = true;
+        rooms[roomCode].players.forEach(p => { p.fouled = false; p.buzzed = false; });
+        rooms[roomCode].submissions = [];
 
         io.to(roomCode).emit('game-started'); 
-        io.to(room.hostId).emit('update-submissions', room.submissions);
-        io.to(room.hostId).emit('update-player-list', room.players);
+        io.to(rooms[roomCode].hostId).emit('update-submissions', rooms[roomCode].submissions);
+        io.to(rooms[roomCode].hostId).emit('update-player-list', rooms[roomCode].players);
     });
 
     // === 6. Host รีเซ็ตเกม ===
     socket.on('host-reset-game', (roomCode) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
+        if (!rooms[roomCode] || rooms[roomCode].hostId !== socket.id) return;
 
         console.log(`Game reset in room ${roomCode}`);
-        room.isGameActive = false;
-        room.players.forEach(p => { p.fouled = false; p.buzzed = false; });
-        room.submissions = [];
+        rooms[roomCode].isGameActive = false;
+        rooms[roomCode].players.forEach(p => { p.fouled = false; p.buzzed = false; });
+        rooms[roomCode].submissions = [];
 
         io.to(roomCode).emit('game-reset'); 
-        io.to(room.hostId).emit('update-submissions', room.submissions);
-        io.to(room.hostId).emit('update-player-list', room.players);
+        io.to(rooms[roomCode].hostId).emit('update-submissions', rooms[roomCode].submissions);
+        io.to(rooms[roomCode].hostId).emit('update-player-list', rooms[roomCode].players);
     });
 
     // === 7. Player กดปุ่ม ===
     socket.on('player-buzz', (roomCode) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-        const player = room.players.find(p => p.id === socket.id);
-        
+        if (!rooms[roomCode]) return;
+        const player = rooms[roomCode].players.find(p => p.id === socket.id);
         if (!player || player.buzzed || player.fouled) return;
 
         const buzzTime = new Date();
-        if (!room.isGameActive) {
+        if (!rooms[roomCode].isGameActive) {
             player.fouled = true;
             socket.emit('player-foul');
         } else {
             player.buzzed = true;
-            room.submissions.push({
+            
+            // === [EDIT] แก้ไขเวลาเป็น GMT+7 (Bangkok) ===
+            const options = {
+                timeZone: 'Asia/Bangkok',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            const bangkokTime = buzzTime.toLocaleTimeString('th-TH', options);
+            const milliseconds = buzzTime.getMilliseconds().toString().padStart(3, '0');
+            // ==========================================
+
+            rooms[roomCode].submissions.push({
                 name: player.name,
-                time: buzzTime.toLocaleTimeString('th-TH', { hour12: false }) + '.' + buzzTime.getMilliseconds().toString().padStart(3, '0')
+                time: `${bangkokTime}.${milliseconds}` // **[EDIT]**
             });
-            socket.emit('player-done');
-            io.to(room.hostId).emit('update-submissions', room.submissions);
+            
+            socket.emit('player-done'); 
+            io.to(rooms[roomCode].hostId).emit('update-submissions', rooms[roomCode].submissions);
         }
-        io.to(room.hostId).emit('update-player-list', room.players);
+        io.to(rooms[roomCode].hostId).emit('update-player-list', rooms[roomCode].players);
     });
 
     // === 8. การจัดการเมื่อผู้ใช้หลุด ===
@@ -226,9 +233,19 @@ io.on('connection', (socket) => {
             }
 
             // ตรรกะของ Player เมื่อ Disconnect
-            const player = room.players.find(p => p.id === socket.id);
-            if (player) {
-                console.log(`Player ${player.name} disconnected from room ${roomCode}. Awaiting rejoin.`);
+            // (แก้ไขจากไฟล์ที่คุณอัปโหลด)
+            const playerIndex = room.players.findIndex(p => p.id === socket.id);
+            if (playerIndex > -1) {
+                const playerName = room.players[playerIndex].name;
+                console.log(`Player ${playerName} disconnected from room ${roomCode}. Removing player.`);
+                
+                // ลบผู้เล่นออกจากห้องเมื่อหลุด (เพื่อให้เขากลับมา Join ใหม่ได้)
+                rooms[roomCode].players.splice(playerIndex, 1);
+                
+                // อัปเดตรายชื่อให้ Host (ถ้า Host ยังอยู่)
+                if (rooms[roomCode]) {
+                    io.to(rooms[roomCode].hostId).emit('update-player-list', room.players);
+                }
                 break;
             }
         }

@@ -8,6 +8,16 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="host-page-body landscape-only">
+    
+    <div class="theme-switch-wrapper">
+        <span class="theme-switch-label">☀️</span>
+        <label class="theme-switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="theme-switch-label">🌙</span>
+    </div>
+
     <div class="header">
         <h1 id="host-room-name"></h1>
         <h2>รหัสห้อง: <span id="host-room-code"></span></h2>
@@ -59,22 +69,16 @@
         resetGameBtn.onclick = () => {
             socket.emit('host-reset-game', currentRoomCode);
         };
-
-        // --- ฟังก์ชัน Export CSV ---
         exportCsvBtn.onclick = () => {
             if (currentSubmissions.length === 0) {
                 alert('ยังไม่มีผลการแข่งขันให้ Export');
                 return;
             }
-
-            // เพิ่ม \uFEFF (BOM) เพื่อให้ Excel เปิดไฟล์ UTF-8 (ภาษาไทย) ได้ถูกต้อง
             let csvContent = "data:text/csv;charset=utf-8,\uFEFFลำดับ,ชื่อผู้เล่น,เวลา\r\n";
-
             currentSubmissions.forEach((sub, index) => {
                 let row = `${index + 1},"${sub.name}","${sub.time}"\r\n`;
                 csvContent += row;
             });
-
             var encodedUri = encodeURI(csvContent);
             var link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -120,11 +124,10 @@
                 li.textContent = player.name;
                 
                 if (player.fouled) {
-                    li.classList.add('foul-player'); // แดง
+                    li.classList.add('foul-player'); 
                     li.textContent += ' (FOUL)';
                 } else if (player.buzzed) {
-                    li.classList.add('buzzed-player'); // น้ำเงิน
-                    // **[FIX]** เปลี่ยนเป็น (DONE)
+                    li.classList.add('buzzed-player');
                     li.textContent += ' (DONE)'; 
                 }
                 playerList.appendChild(li);
@@ -164,6 +167,26 @@
             if (forceRedirect) {
                 sessionStorage.clear(); 
                 window.location.href = '/'; 
+            }
+        });
+
+        // === [NEW] Theme Switcher Logic ===
+        const toggle = document.getElementById('theme-toggle');
+        const body = document.body;
+        if (localStorage.getItem('theme') === 'light') {
+            body.classList.add('light-mode');
+            toggle.checked = false;
+        } else {
+            body.classList.remove('light-mode');
+            toggle.checked = true;
+        }
+        toggle.addEventListener('change', () => {
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light');
             }
         });
 

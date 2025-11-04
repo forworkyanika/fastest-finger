@@ -3,24 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fast Finger</title> <link rel="stylesheet" href="/style.css">
+    <title>Fast Finger</title> 
+    <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="home-page-body"> 
+    
+    <div class="theme-switch-wrapper">
+        <span class="theme-switch-label">☀️</span>
+        <label class="theme-switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="theme-switch-label">🌙</span>
+    </div>
+
     <div class="container">
-        <h1>Fast Finger</h1> <p>ทดสอบความเร็วในการกดปุ่มของคุณ</p>
+        <h1>Fast Finger</h1> 
+        <p>ทดสอบความเร็วในการกดปุ่มของคุณ</p>
 
         <div class="card">
             <h2>สร้างห้อง (Host)</h2>
             <input type="text" id="room-name-input" placeholder="กรอกชื่อห้อง (ก-ฮ, a-z, ≤ 20 ตัวอักษร)">
-            <button id="create-room-btn">สร้างห้อง</button>
+            <button id="create-room-btn">create room</button>
         </div>
 
         <div class="card">
             <h2>เข้าร่วม (Player)</h2>
             <input type="text" id="player-name-input" placeholder="กรอกชื่อของคุณ (ก-ฮ, a-z, ≤ 20 ตัวอักษร)">
             <input type="text" id="room-code-input" placeholder="กรอกรหัสห้อง (4 หลัก)">
-            <button id="join-room-btn">เข้าร่วม</button>
+            <button id="join-room-btn">join</button>
         </div>
     </div>
 
@@ -67,6 +79,30 @@
         socket.on('error-message', (message) => {
             alert(`เกิดข้อผิดพลาด: ${message}`);
             sessionStorage.clear();
+        });
+
+        // === [NEW] Theme Switcher Logic ===
+        const toggle = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        // 1. ตรวจสอบค่าที่บันทึกไว้
+        if (localStorage.getItem('theme') === 'light') {
+            body.classList.add('light-mode');
+            toggle.checked = false; // ถ้า light mode ให้ติ๊กออก (เริ่มต้น ☀️)
+        } else {
+            body.classList.remove('light-mode');
+            toggle.checked = true; // ถ้า dark mode ให้ติ๊กไว้ (🌙)
+        }
+
+        // 2. เพิ่ม Event Listener
+        toggle.addEventListener('change', () => {
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light');
+            }
         });
     </script>
 </body>
